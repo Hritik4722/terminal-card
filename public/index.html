@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Terminal Card — GitHub README Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f17;
+    --surface: #1a1a2e;
+    --surface2: #22223a;
+    --border: rgba(255,255,255,0.08);
+    --text: #cdd6f4;
+    --muted: #6c7086;
+    --green: #a6e3a1;
+    --blue: #89b4fa;
+    --accent: #cba6f7;
+    --red: #f38ba8;
+    --yellow: #f9e2af;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--green);
+  }
+  .logo span { color: var(--muted); }
+  header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 61px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+
+  .main {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    margin-top: 1.25rem;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .field { margin-bottom: 10px; }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: rgba(203,166,247,0.4);
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  select { cursor: pointer; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .toggle {
+    width: 36px; height: 20px;
+    background: var(--surface2);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--green); border-color: var(--green); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(16px); }
+  .toggle-label { font-size: 12px; color: var(--muted); }
+
+  .generate-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--accent);
+    color: #1e1e2e;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: opacity 0.15s;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.03em;
+  }
+  .generate-btn:hover { opacity: 0.85; }
+  .generate-btn:active { opacity: 0.7; }
+
+  .preview-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .preview-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 260px;
+  }
+  .preview-box img {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+  .preview-placeholder {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .preview-placeholder code {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--green);
+    font-family: 'Courier New', monospace;
+  }
+
+  .snippet-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .snippet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .copy-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-size: 11px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.08); }
+  .copy-btn.copied { color: var(--green); }
+
+  pre#snippet {
+    padding: 14px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: var(--blue);
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.7;
+    background: transparent;
+  }
+
+  .usage-steps {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 6px 0;
+  }
+  .step-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step code {
+    font-family: 'Courier New', monospace;
+    color: var(--green);
+    font-size: 12px;
+  }
+
+  .loading {
+    display: none;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">❯ <span>terminal</span>-card</div>
+  <p>Embed a terminal SVG in your GitHub README</p>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <p class="section-title">github</p>
+    <div class="field">
+      <label>username *</label>
+      <input type="text" id="username" placeholder="hritik4722" value="hritik4722"/>
+    </div>
+    <button class="generate-btn" onclick="fetchAndPreview()" id="fetch-btn">
+      ❯ fetch &amp; preview
+    </button>
+    <p class="loading" id="loading-msg">fetching github data...</p>
+
+    <p class="section-title">identity</p>
+    <div class="field">
+      <label>display name</label>
+      <input type="text" id="name" placeholder="auto-fetched from github"/>
+    </div>
+    <div class="field">
+      <label>title / role</label>
+      <input type="text" id="title" placeholder="GenAI Engineer"/>
+    </div>
+    <div class="field">
+      <label>location</label>
+      <input type="text" id="location" placeholder="India"/>
+    </div>
+
+    <p class="section-title">terminal lines</p>
+    <div class="field">
+      <label>command 1</label>
+      <input type="text" id="cmd1" value="whoami"/>
+    </div>
+    <div class="field">
+      <label>command 2</label>
+      <input type="text" id="cmd2" value="cat current_focus.txt"/>
+    </div>
+    <div class="field">
+      <label>focus / output of cmd 2</label>
+      <input type="text" id="focus" placeholder="Building LLM-powered products"/>
+    </div>
+    <div class="field">
+      <label>command 3</label>
+      <input type="text" id="cmd3" value="cat stats.json"/>
+    </div>
+    <div class="field">
+      <label>status message</label>
+      <input type="text" id="status" placeholder="open to interesting problems"/>
+    </div>
+
+    <p class="section-title">style</p>
+    <div class="field">
+      <label>theme</label>
+      <select id="theme" onchange="fetchAndPreview()">
+        <option value="catppuccin">Catppuccin (dark)</option>
+        <option value="dracula">Dracula (dark)</option>
+        <option value="nord">Nord (blue dark)</option>
+        <option value="github">GitHub Light</option>
+      </select>
+    </div>
+
+    <p class="section-title">options</p>
+    <div class="toggle-row">
+      <div class="toggle on" id="stats-toggle" onclick="toggleStats()"></div>
+      <span class="toggle-label">show github stats</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div>
+      <p class="preview-label">live preview</p>
+      <div class="preview-box" id="preview-box">
+        <div class="preview-placeholder">
+          fill in your details and click<br/>
+          <code>❯ fetch &amp; preview</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="snippet-box" id="snippet-section" style="display:none">
+      <div class="snippet-header">
+        <span>readme.md snippet</span>
+        <button class="copy-btn" id="copy-btn" onclick="copySnippet()">copy</button>
+      </div>
+      <pre id="snippet"></pre>
+    </div>
+
+    <div class="usage-steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <span>Fill in your details on the left and click <code>fetch &amp; preview</code></span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <span>Copy the markdown snippet above</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <span>Paste it into your <code>README.md</code> on GitHub — done!</span>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  let showStats = true;
+
+  function toggleStats() {
+    showStats = !showStats;
+    const t = document.getElementById('stats-toggle');
+    t.classList.toggle('on', showStats);
+    fetchAndPreview();
+  }
+
+  function buildURL() {
+    const base = window.location.origin + '/api/terminal';
+    const p = new URLSearchParams();
+    const get = id => document.getElementById(id).value.trim();
+
+    const username = get('username') || 'hritik4722';
+    p.set('username', username);
+    if (get('name'))     p.set('name',     get('name'));
+    if (get('title'))    p.set('title',    get('title'));
+    if (get('location')) p.set('location', get('location'));
+    if (get('focus'))    p.set('focus',    get('focus'));
+    if (get('status'))   p.set('status',   get('status'));
+    if (get('cmd1') !== 'whoami')               p.set('cmd1', get('cmd1'));
+    if (get('cmd2') !== 'cat current_focus.txt') p.set('cmd2', get('cmd2'));
+    if (get('cmd3') !== 'cat stats.json')        p.set('cmd3', get('cmd3'));
+    p.set('stats', showStats ? 'true' : 'false');
+    p.set('theme', get('theme') || 'catppuccin');
+
+    return base + '?' + p.toString();
+  }
+
+  async function fetchAndPreview() {
+    const btn = document.getElementById('fetch-btn');
+    const loading = document.getElementById('loading-msg');
+    btn.disabled = true;
+    btn.textContent = '❯ loading...';
+    loading.style.display = 'block';
+
+    const url = buildURL();
+    const bust = url + '&_=' + Date.now();
+
+    const box = document.getElementById('preview-box');
+    box.innerHTML = `<img src="${bust}" alt="terminal card" onload="onImgLoad()" onerror="onImgError()"/>`;
+
+    const snippet = `![terminal card](${url})`;
+    document.getElementById('snippet').textContent = snippet;
+    document.getElementById('snippet-section').style.display = 'block';
+
+    btn.disabled = false;
+    btn.textContent = '❯ fetch & preview';
+    loading.style.display = 'none';
+  }
+
+  function onImgLoad() {}
+  function onImgError() {
+    document.getElementById('preview-box').innerHTML =
+      '<p style="color:#f38ba8;font-size:13px;font-family:monospace">failed to load — check your username</p>';
+  }
+
+  function copySnippet() {
+    const text = document.getElementById('snippet').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') fetchAndPreview();
+  });
+</script>
+</body>
+</html>
