@@ -45,8 +45,11 @@
   header p {
     font-size: 13px;
     color: var(--muted);
-    margin-left: auto;
+    margin-left: 0;
   }
+
+  .header-right { margin-left: auto; display:flex; gap:14px; align-items:center; }
+  .header-right .social-link { font-size:16px; font-weight:700; color:var(--green); text-decoration:none; }
 
   .layout {
     display: grid;
@@ -277,6 +280,10 @@
 <header>
   <div class="logo">❯ <span>terminal</span>-card</div>
   <p>Embed a terminal SVG in your GitHub README</p>
+  <div class="header-right">
+    <a class="social-link" href="https://github.com/Hritik4722" target="_blank">GitHub</a>
+    <a class="social-link" href="https://x.com/Hritik_Yadav_1" target="_blank">Twitter</a>
+  </div>
 </header>
 
 <div class="layout">
@@ -290,6 +297,9 @@
     <button class="generate-btn" onclick="fetchAndPreview()" id="fetch-btn">
       ❯ fetch &amp; preview
     </button>
+    <div style="margin-top:10px; font-size:13px; color:var(--muted);">
+      <div style="margin-top:6px; color:var(--muted); font-size:12px">Open-sourced — maintained by solo dev (<a href="https://github.com/Hritik4722" target="_blank" style="color:var(--green); text-decoration:none">Hritik4722</a>)</div>
+    </div>
     <p class="loading" id="loading-msg">fetching github data...</p>
 
     <p class="section-title">identity</p>

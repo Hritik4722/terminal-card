@@ -4,6 +4,8 @@ Generate terminal-style SVG cards for your GitHub README. Perfect for showcasing
 
 ![Example](https://terminal-card.onrender.com/api/terminal?username=hritik4722&theme=catppuccin&stats=true)
 
+LINK : https://terminal-card.onrender.com — use the hosted API to generate cards without running anything locally.
+
 ## Features
 
 ✨ **Beautiful Terminal Styling** - Modern, customizable terminal-like SVG cards  
