@@ -1,4 +1,4 @@
-services:
+iservices:
   - type: web
     name: terminal-card
     env: python

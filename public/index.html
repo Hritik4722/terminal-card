@@ -316,16 +316,24 @@
       <input type="text" id="cmd2" value="cat current_focus.txt"/>
     </div>
     <div class="field">
-      <label>focus / output of cmd 2</label>
-      <input type="text" id="focus" placeholder="Building LLM-powered products"/>
+      <label>output 2</label>
+      <input type="text" id="out2" placeholder="Building LLM-powered products"/>
     </div>
     <div class="field">
       <label>command 3</label>
-      <input type="text" id="cmd3" value="cat stats.json"/>
+      <input type="text" id="cmd3" value="ls -la"/>
     </div>
     <div class="field">
-      <label>status message</label>
-      <input type="text" id="status" placeholder="open to interesting problems"/>
+      <label>output 3</label>
+      <input type="text" id="out3" placeholder="README.md  src/  LICENSE"/>
+    </div>
+    <div class="field">
+      <label>command 4</label>
+      <input type="text" id="cmd4" value="echo $STATUS"/>
+    </div>
+    <div class="field">
+      <label>output 4</label>
+      <input type="text" id="out4" placeholder="ok"/>
     </div>
 
     <p class="section-title">style</p>
@@ -403,11 +411,14 @@
     if (get('name'))     p.set('name',     get('name'));
     if (get('title'))    p.set('title',    get('title'));
     if (get('location')) p.set('location', get('location'));
-    if (get('focus'))    p.set('focus',    get('focus'));
-    if (get('status'))   p.set('status',   get('status'));
+    // map output fields to out2/out3/out4 used by the SVG
+    if (get('out2'))     p.set('out2',     get('out2'));
+    if (get('out3'))     p.set('out3',     get('out3'));
+    if (get('out4'))     p.set('out4',     get('out4'));
     if (get('cmd1') !== 'whoami')               p.set('cmd1', get('cmd1'));
     if (get('cmd2') !== 'cat current_focus.txt') p.set('cmd2', get('cmd2'));
     if (get('cmd3') !== 'cat stats.json')        p.set('cmd3', get('cmd3'));
+    if (get('cmd4') !== 'echo $STATUS')           p.set('cmd4', get('cmd4'));
     p.set('stats', showStats ? 'true' : 'false');
     p.set('theme', get('theme') || 'catppuccin');
 

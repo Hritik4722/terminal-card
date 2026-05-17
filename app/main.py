@@ -31,13 +31,30 @@ async def fetch_github(username: str) -> dict:
             )
             if r2.status_code == 200:
                 repos = r2.json()
-                lang_count = {}
+                # Prefer accurate byte counts via the languages API for each repo
+                lang_bytes = {}
                 for repo in repos:
-                    lang = repo.get("language")
-                    if lang:
-                        lang_count[lang] = lang_count.get(lang, 0) + 1
-                if lang_count:
-                    result["top_lang"] = max(lang_count, key=lang_count.get)
+                    # attempt to use the languages_url provided by the repo
+                    lang_url = repo.get("languages_url")
+                    if lang_url:
+                        try:
+                            rl = await client.get(lang_url, headers=headers)
+                            if rl.status_code == 200:
+                                langs = rl.json()
+                                for lname, bytes_count in langs.items():
+                                    lang_bytes[lname] = lang_bytes.get(lname, 0) + int(bytes_count or 0)
+                        except Exception:
+                            # ignore per-repo language fetch errors
+                            continue
+                    else:
+                        # fallback to the repo 'language' field (may be None)
+                        lang = repo.get("language")
+                        if lang:
+                            lang_bytes[lang] = lang_bytes.get(lang, 0) + 1
+
+                if lang_bytes:
+                    # choose the language with the highest total bytes
+                    result["top_lang"] = max(lang_bytes, key=lang_bytes.get)
 
             r3 = await client.get(
                 f"https://api.github.com/search/commits?q=author:{username}&per_page=1",
@@ -59,79 +76,78 @@ def trunc(s: str, n: int) -> str:
 
 
 def build_svg(p: dict, theme_colors: dict) -> str:
-    username   = esc(p["username"])
-    name       = esc(trunc(p["name"], 40))
-    title      = esc(trunc(p["title"], 30))
-    location   = esc(trunc(p["location"], 20))
-    focus      = esc(trunc(p["focus"], 56))
-    status     = esc(trunc(p["status"], 50))
-    cmd1       = esc(p["cmd1"])
-    cmd2       = esc(p["cmd2"])
-    cmd3       = esc(p["cmd3"])
-    cmd4       = esc(p["cmd4"])
-    out1       = esc(trunc(p["out1"], 56))
-    out2       = esc(trunc(p["out2"], 56))
-    out3       = esc(trunc(p["out3"], 56))
-    out4       = esc(trunc(p["out4"], 56))
-    commits    = esc(p["commits"])
-    top_lang   = esc(p["top_lang"])
-    show_stats = p["show_stats"]
+        username = esc(p["username"])
+        name = esc(trunc(p["name"], 40))
+        title = esc(trunc(p["title"], 30))
+        location = esc(trunc(p["location"], 20))
 
-    # Extract theme colors
-    bg = theme_colors["bg"]
-    surface = theme_colors["surface"]
-    muted = theme_colors["muted"]
-    text = theme_colors["text"]
-    green = theme_colors["green"]
-    blue = theme_colors["blue"]
-    accent = theme_colors["accent"]
+        cmd1 = esc(p.get("cmd1", ""))
+        cmd2 = esc(p.get("cmd2", ""))
+        cmd3 = esc(p.get("cmd3", ""))
+        cmd4 = esc(p.get("cmd4", ""))
 
-    height = 310 if show_stats else 270
+        out1 = esc(trunc(p.get("out1", ""), 56))
+        out2 = esc(trunc(p.get("out2", ""), 56))
+        out3 = esc(trunc(p.get("out3", ""), 56))
+        out4 = esc(trunc(p.get("out4", ""), 56))
 
-    stats_block = ""
-    if show_stats:
-        stats_block = f"""
-  <text x="28" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <text x="44" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd3}</text>
-  <text x="44" y="194" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">commits: <tspan fill="{green}">{commits}</tspan>   top_lang: <tspan fill="{blue}">{top_lang}</tspan></text>
+        show_stats = p.get("show_stats", True)
 
-  <text x="28" y="224" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <text x="44" y="224" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd4}</text>
-  <text x="44" y="247" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{green}">→ {status}</text>
+        # theme colors
+        bg = theme_colors["bg"]
+        surface = theme_colors["surface"]
+        muted = theme_colors["muted"]
+        text = theme_colors["text"]
+        green = theme_colors["green"]
+        blue = theme_colors["blue"]
+        accent = theme_colors["accent"]
 
-  <text x="28" y="277" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <rect x="44" y="264" width="8" height="15" fill="{text}" opacity="0.9">
-    <animate attributeName="opacity" values="0.9;0;0.9" dur="1.2s" repeatCount="indefinite"/>
-  </rect>"""
-    else:
-        stats_block = f"""
-  <text x="28" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <text x="44" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd3}</text>
-  <text x="44" y="194" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{green}">→ {status}</text>
+        height = 310 if show_stats else 270
 
-  <text x="28" y="224" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <rect x="44" y="211" width="8" height="15" fill="{text}" opacity="0.9">
-    <animate attributeName="opacity" values="0.9;0;0.9" dur="1.2s" repeatCount="indefinite"/>
-  </rect>"""
+        stats_block = ""
+        if show_stats:
+                stats_block = f"""
+    <text x="28" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <text x="44" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd3}</text>
+    <text x="44" y="194" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{out3}</text>
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="680" height="{height}" viewBox="0 0 680 {height}">
-  <rect width="680" height="{height}" rx="12" ry="12" fill="{bg}"/>
-  <rect width="680" height="38" rx="12" ry="12" fill="{surface}"/>
-  <rect y="12" width="680" height="26" fill="{surface}"/>
+    <text x="28" y="224" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <text x="44" y="224" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd4}</text>
+    <text x="44" y="247" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{out4}</text>
 
-  <circle cx="22" cy="19" r="6" fill="#ff5f57"/>
-  <circle cx="42" cy="19" r="6" fill="#febc2e"/>
-  <circle cx="62" cy="19" r="6" fill="#28c840"/>
-  <text x="340" y="24" text-anchor="middle" font-family="'Fira Code', 'Courier New', monospace" font-size="12" fill="{muted}">{username}@dev ~ profile.sh</text>
+    <text x="28" y="277" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <rect x="44" y="264" width="8" height="15" fill="{text}" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0;0.9" dur="1.2s" repeatCount="indefinite"/>
+    </rect>"""
+        else:
+                stats_block = f"""
+    <text x="28" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <text x="44" y="171" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd3}</text>
+    <text x="44" y="194" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{out3}</text>
 
-  <text x="28" y="72" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <text x="44" y="72" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd1}</text>
-  <text x="44" y="95" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{name} — {title}, {location}</text>
+    <text x="28" y="224" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <rect x="44" y="211" width="8" height="15" fill="{text}" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0;0.9" dur="1.2s" repeatCount="indefinite"/>
+    </rect>"""
 
-  <text x="28" y="125" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
-  <text x="44" y="125" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd2}</text>
-  <text x="44" y="148" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{focus}</text>
-  {stats_block}
+        return f"""<svg xmlns="http://www.w3.org/2000/svg" width="680" height="{height}" viewBox="0 0 680 {height}">
+    <rect width="680" height="{height}" rx="12" ry="12" fill="{bg}"/>
+    <rect width="680" height="38" rx="12" ry="12" fill="{surface}"/>
+    <rect y="12" width="680" height="26" fill="{surface}"/>
+
+    <circle cx="22" cy="19" r="6" fill="#ff5f57"/>
+    <circle cx="42" cy="19" r="6" fill="#febc2e"/>
+    <circle cx="62" cy="19" r="6" fill="#28c840"/>
+    <text x="340" y="24" text-anchor="middle" font-family="'Fira Code', 'Courier New', monospace" font-size="12" fill="{muted}">{username}@dev ~ profile.sh</text>
+
+    <text x="28" y="72" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <text x="44" y="72" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd1}</text>
+    <text x="44" y="95" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{name} — {title}, {location}</text>
+
+    <text x="28" y="125" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{muted}">❯</text>
+    <text x="44" y="125" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{accent}" font-weight="500">{cmd2}</text>
+        <text x="44" y="148" font-family="'Fira Code', 'Courier New', monospace" font-size="13" fill="{text}">{out2}</text>
+    {stats_block}
 </svg>"""
 
 
@@ -162,8 +178,7 @@ async def terminal(
         "name":       name       or gh["name"]     or username,
         "title":      title      or "Developer",
         "location":   location   or "",
-        "focus":      focus      or gh["bio"]      or "Building cool things",
-        "status":     status,
+        # out2/out3/out4 are user-provided outputs for commands 2-4
         "cmd1":       cmd1,
         "cmd2":       cmd2,
         "cmd3":       cmd3,
@@ -172,8 +187,7 @@ async def terminal(
         "out2":       out2,
         "out3":       out3,
         "out4":       out4,
-        "commits":    gh["commits"]  or "—",
-        "top_lang":   gh["top_lang"] or "—",
+        
         "show_stats": stats,
     }
 
